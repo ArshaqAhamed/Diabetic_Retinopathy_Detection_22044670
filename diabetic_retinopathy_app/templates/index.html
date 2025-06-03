@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Diabetic Retinopathy Detection</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Diabetic Retinopathy Detection</h1>
+        <h2>Developed by: Arshaq Ahamed Ibrahim - 22044670</h2>
+        <div class="upload-section">
+            <input type="file" id="fileInput" accept="image/*">
+            <button onclick="uploadFile()">Analyze Image</button>
+        </div>
+        <div id="resultSection" class="hidden">
+            <h2>Results:</h2>
+            <div id="imagePreview"></div>
+            <div id="predictionResult"></div>
+            <div id="confidence"></div>
+            <div id="detailedResults"></div>
+        </div>
+        <div id="loading" class="hidden">Processing...</div>
+    </div>
+
+    <script>
+        function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            showLoading(true);
+
+            fetch('/predict', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                showLoading(false);
+                if(data.error) {
+                    alert(data.error);
+                    return;
+                }
+
+                document.getElementById('resultSection').classList.remove('hidden');
+                document.getElementById('imagePreview').innerHTML = 
+                    `<img src="${data.image_path}" alt="Uploaded Image" style="max-width: 400px;">`;
+
+                const binaryText = data.dr_present ? "DR Present" : "No DR Detected";
+                document.getElementById('predictionResult').innerHTML = 
+                    `<strong>Binary Classification:</strong> ${binaryText} <br> 
+                    <strong>Confidence:</strong> ${(data.binary_confidence * 100).toFixed(2)}%`;
+
+                document.getElementById('confidence').innerHTML = 
+                    `<strong>Stage Prediction:</strong> ${data.dr_stage} <br>
+                    <strong>Confidence:</strong> ${(data.stage_confidence * 100).toFixed(2)}%`;
+
+                const detailed = Object.entries(data.all_stage_predictions)
+                    .map(([label, value]) => `${label}: ${(value * 100).toFixed(2)}%`)
+                    .join('<br>');
+                document.getElementById('detailedResults').innerHTML = detailed;
+            })
+
+
+            .catch(error => {
+                showLoading(false);
+                console.error('Error:', error);
+            });
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading').classList.toggle('hidden', !show);
+        }
+    </script>
+</body>
+</html>
